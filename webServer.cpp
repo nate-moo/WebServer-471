@@ -24,7 +24,6 @@
 // **************************************************************************************
 #include "webServer.h"
 
-
 // **************************************************************************************
 // * Signal Handler.
 // * - Display the signal and exit (returning 0 to OS indicating normal shutdown)
@@ -123,15 +122,19 @@ int main (int argc, char *argv[]) {
   // *******************************************************************
   // * Catch all possible signals
   // ********************************************************************
-  DEBUG << "Setting up signal handlers" << ENDL;
+  //DEBUG << "Setting up signal handlers" << ENDL;
   
 
   
   // *******************************************************************
   // * Creating the inital socket using the socket() call.
   // ********************************************************************
-  int listenFd;
+  int listenFd = socket(PF_INET, SOCK_STREAM, 0);
   DEBUG << "Calling Socket() assigned file descriptor " << listenFd << ENDL;
+
+
+
+
 
   
   // ********************************************************************
@@ -155,11 +158,22 @@ int main (int argc, char *argv[]) {
   // * Don't forget to check to see if bind() fails because the port
   // * you picked is in use, and if the port is in use, pick a different one.
   // ********************************************************************
-  uint16_t port;
+  uint16_t port = 1032;
   DEBUG << "Calling bind()" << ENDL;
-  
-  std::cout << "Using port: " << port << std::endl;
 
+  struct sockaddr_in server_addr;
+  server_addr.sin_family = AF_INET;
+  server_addr.sin_addr.s_addr = INADDR_ANY;
+  server_addr.sin_port = htons(port);
+
+  while ( bind( listenFd, reinterpret_cast<struct sockaddr *>(&server_addr), sizeof(struct sockaddr)) == -1 ) {
+    ERROR << "Failed to bind to socket\n"
+          << "trying new port" << ENDL;
+    port += 17;
+    server_addr.sin_port = htons(port);
+  }
+
+  std::cout << "Using port: " << port << std::endl;
 
   // ********************************************************************
   // * Setting the socket to the listening state is the second step
@@ -168,6 +182,9 @@ int main (int argc, char *argv[]) {
   // ********************************************************************
   DEBUG << "Calling listen()" << ENDL;
 
+  if (listen(listenFd, 20) != 0) {
+    ERROR << "Failed to listen to socket: " + errno << ENDL;
+  }
 
   // ********************************************************************
   // * The accept call will sleep, waiting for a connection.  When 
@@ -175,11 +192,27 @@ int main (int argc, char *argv[]) {
   // * socket with a new fd that will be used for the communication.
   // ********************************************************************
   int quitProgram = 0;
+  char recv_buf[1024 * 12] = {};
+
   while (!quitProgram) {
     int connFd = 0;
     DEBUG << "Calling connFd = accept(fd,NULL,NULL)." << ENDL;
 
-    
+    connFd = accept(listenFd, NULL,NULL);
+
+    if (connFd > 0) {
+      INFO << "Sucessfully connected" << ENDL;
+    } else if (connFd < 0) {
+      ERROR << "Failed to accept" << ENDL;
+    }
+
+    while( recv(connFd, recv_buf, sizeof(recv_buf), 0) > 0 ) {
+      printf("%s", recv_buf);
+      memset(recv_buf, '\0', strlen(recv_buf));
+      break;
+    }
+
+
 
     DEBUG << "We have recieved a connection on " << connFd << ". Calling processConnection(" << connFd << ")" << ENDL;
     quitProgram = processConnection(connFd);

@@ -5,7 +5,7 @@
 #  Created by Phillip Romig on 4/3/12.
 #  Copyright 2012 Colorado School of Mines. All rights reserved.
 #
-USERNAME = change-me
+USERNAME = nmoore1
 
 CXX = g++
 LD = g++
@@ -29,6 +29,9 @@ ${TARGET}: ${OBJ_FILES}
 
 %.o : %.cc ${INC_FILES}
 	${CXX} -c ${CXXFLAGS} -o $@ $<
+
+all:
+	gcc webServer.cpp -o webServer.o
 
 #
 # Please remember not to submit objects or binarys.

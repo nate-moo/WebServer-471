@@ -1,0 +1,11 @@
+services:
+  devenv:
+    image: ubuntu:24.04
+    volumes:
+      - "./:/data/"
+    ports:
+      - "476:80"
+    tty: true
+    stdin_open: true
+    entrypoint: /bin/bash
+
