@@ -161,7 +161,7 @@ int main (int argc, char *argv[]) {
   uint16_t port = 1032;
   DEBUG << "Calling bind()" << ENDL;
 
-  struct sockaddr_in server_addr;
+  struct sockaddr_in server_addr{};
   server_addr.sin_family = AF_INET;
   server_addr.sin_addr.s_addr = INADDR_ANY;
   server_addr.sin_port = htons(port);
@@ -218,15 +218,12 @@ int main (int argc, char *argv[]) {
     }
 
     while( recv(connFd, recv_buf, sizeof(recv_buf), 0) > 0 ) {
-      // printf("%s", recv_buf);
 
       char* line = strtok(recv_buf, "\r\n");
       char* token = strtok(line, " ");
       DEBUG << token << ENDL;
       token = strtok(NULL, " ");
       DEBUG << token << ENDL;
-
-
 
       char initpath[] = "./data";
       char* path = (char*)malloc(1024);
@@ -252,19 +249,12 @@ int main (int argc, char *argv[]) {
         break;
       }
 
-
-
-
-
-
       if (std::regex_match(token, std::regex("(/file[0-9]\\.html)") )) {
         length = 0;
         std::ifstream *file = new std::ifstream(path, std::ios_base::in);
         file->read(data, 1024*1024);
         delete file;
       } else {
-        // int filefd = open(path, 0, O_RDONLY);
-        // read(filefd, dataBytes, 1024*1024);
         FILE *fileptr = fopen(path, "rb");
         fseek(fileptr, 0, SEEK_END);
         length = ftell(fileptr);
@@ -273,7 +263,6 @@ int main (int argc, char *argv[]) {
         memset(dataBytes, '\0', length * sizeof(char));
         fread(dataBytes, 1, length, fileptr);
         fclose(fileptr);
-        // delete fileptr;
       }
 
       memset(recv_buf, '\0', strlen(recv_buf));
@@ -289,8 +278,8 @@ int main (int argc, char *argv[]) {
         response = new std::string(*successImage + std::to_string(length) + "\r\n\r\n");
       }
 
-      // std::string response = success + "10\r\n\r\naaaaaaaaaa";
-      std::cout << response->size() << std::endl;
+      DEBUG << response->size() << ENDL;
+
       send(connFd, response->data(), response->size(), 0);
       if (length != 0) {
         send(connFd, dataBytes, length, 0);
