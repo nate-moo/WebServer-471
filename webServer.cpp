@@ -95,7 +95,7 @@ int processConnection(int sockFd) {
 
   return 0;
 }
-    
+
 
 int main (int argc, char *argv[]) {
 
@@ -192,20 +192,24 @@ int main (int argc, char *argv[]) {
   // * socket with a new fd that will be used for the communication.
   // ********************************************************************
   int quitProgram = 0;
-  char recv_buf[1024 * 1024] = {};
-  char* send_buf = (char*)malloc(1024*1024);
-  char path_buf[1024* 10] = {};
-  // std::string data;
-  //
-  char* data = (char*)malloc(1024*1024);
-
-  auto* success = new std::string("HTTP/1.0 200 OK\r\nServer: SillyStupid/0.1\r\nContent-type: text/html; charset=utf-8\r\nContent-Length: ");
-  char fnf[] = "HTTP/1.0 404 File Not Found\r\nServer: SillyStupid/0.1\r\nContent-type: text/html; charset=utf-8\r\nContent-Length: 23\r\n\r\n<h1>File Not Found</h1>";
-  // char server[] = "Server: SillyStupid/0.1\r\nContent-type: text/html; charset=utf-8\r\nContent-Length: ";
-  // char msg[] = "HTTP/1.0 200 OK\r\nServer: SillyStupid/0.1\r\nContent-type: text/html; charset=utf-8\r\nContent-Length: 10\r\n\r\naaaaaaaaaa";
-  std::ifstream *file;
 
   while (!quitProgram) {
+    char recv_buf[1024 * 1024] = {};
+    // char* send_buf = (char*)malloc(1024*1024);
+    // char path_buf[1024* 10] = {};
+    // std::string data;
+    //
+
+    char* data = (char*)malloc(1024*1024);
+    std::byte* dataBytes;
+    int length = 0;
+
+    auto* successImage = new std::string("HTTP/1.0 200 OK\r\nServer: SillyStupid/0.1\r\nContent-type: image/jpeg\r\nContent-Length: ");
+    auto* success = new std::string("HTTP/1.0 200 OK\r\nServer: SillyStupid/0.1\r\nContent-type: text/html; charset=utf-8\r\nContent-Length: ");
+    char fnf[] = "HTTP/1.0 404 File Not Found\r\nServer: SillyStupid/0.1\r\nContent-type: text/html; charset=utf-8\r\nContent-Length: 23\r\n\r\n<h1>File Not Found</h1>";
+
+    std::ifstream *file;
+
     int connFd = 0;
     bool found = false;
     DEBUG << "Calling connFd = accept(fd,NULL,NULL)." << ENDL;
@@ -223,33 +227,75 @@ int main (int argc, char *argv[]) {
 
       char* line = strtok(recv_buf, "\r\n");
       char* token = strtok(line, " ");
-      std::cout << token << "\n";
+      DEBUG << token << ENDL;
       token = strtok(NULL, " ");
-      std::cout << token << "\n";
+      DEBUG << token << ENDL;
+
+
 
       char initpath[] = "./data";
       char* path = (char*)malloc(1024);
+
+      if (std::regex_match(token, std::regex("(/file[0-9]\\.html|/image[0-9]\\.jpg)") )) {
+        found = true;
+      } else {
+        found = false;
+        break;
+
+      }
+
+
       strcat(path, initpath);
       strcat(path, token);
 
-      std::cout << path << " " << strlen(path) << std::endl;
+      DEBUG << path << " " << strlen(path) << ENDL;
 
-      file = new std::ifstream(path);
+      if (!std::ifstream(path).good()) {
+        send(connFd, fnf, sizeof(fnf), 0);
+        break;
+      }
 
-      file->read(data, 1024*1024);
+      if (std::regex_match(token, std::regex("(/file[0-9]\\.html)") )) {
+        length = 0;
+        file = new std::ifstream(path, std::ios_base::in);
+        file->read(data, 1024*1024);
+        delete file;
+      } else {
+        // int filefd = open(path, 0, O_RDONLY);
+        // read(filefd, dataBytes, 1024*1024);
+        FILE *fileptr = fopen(path, "rb");
+        fseek(fileptr, 0, SEEK_END);
+        length = ftell(fileptr);
+        rewind(fileptr);
+        dataBytes = (std::byte *)malloc(length * sizeof(char));
+        fread(dataBytes, 1, length, fileptr);
+        fclose(fileptr);
+        // delete fileptr;
+      }
 
-      // FILE *file = fopen("/data", "rb");
-      // std::cout << data << '\n';
-      // std::cout << std::endl;
       memset(recv_buf, '\0', strlen(recv_buf));
       break;
     }
 
-    if (!found) {
-      auto* response = new std::string(*success + std::to_string(strlen(data)) + "\r\n\r\n" + data);
+    if (found) {
+      std::string* response;
+
+      if (length == 0) {
+        response = new std::string(*success + std::to_string(strlen(data)) + "\r\n\r\n" + data);
+      } else {
+        response = new std::string(*successImage + std::to_string(length) + "\r\n\r\n");
+      }
+
       // std::string response = success + "10\r\n\r\naaaaaaaaaa";
       std::cout << response->size() << std::endl;
       send(connFd, response->data(), response->size(), 0);
+      if (length != 0) {
+        send(connFd, dataBytes, length, 0);
+        memset(dataBytes, '\0', length);
+      }
+      memset(data, '\0', strlen(data));
+      length = 0;
+      delete response;
     } else {
       send(connFd, fnf, sizeof(fnf), 0);
     }
@@ -264,5 +310,5 @@ int main (int argc, char *argv[]) {
 
   ERROR << "Program fell through to the end of main. A listening socket may have closed unexpectadly." << ENDL;
   closefrom(3);
-
+  return 0;
 }
