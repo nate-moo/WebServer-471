@@ -192,10 +192,20 @@ int main (int argc, char *argv[]) {
   // * socket with a new fd that will be used for the communication.
   // ********************************************************************
   int quitProgram = 0;
-  char recv_buf[1024 * 12] = {};
+  char recv_buf[1024 * 1024] = {};
+  char* send_buf = (char*)malloc(1024*1024*1024);
+  char path_buf[1024* 10] = {};
+  //
+
+  char success[] = "HTTP/1.0 200 OK\r\nServer: SillyStupid/0.1\r\nContent-type: text/html; charset=utf-8\r\nContent-Length: ";
+  char fnf[] = "HTTP/1.0 404 File Not Found\r\nServer: SillyStupid/0.1\r\nContent-type: text/html; charset=utf-8\r\nContent-Length: 23\r\n\r\n<h1>File Not Found</h1>";
+  // char server[] = "Server: SillyStupid/0.1\r\nContent-type: text/html; charset=utf-8\r\nContent-Length: ";
+  // char msg[] = "HTTP/1.0 200 OK\r\nServer: SillyStupid/0.1\r\nContent-type: text/html; charset=utf-8\r\nContent-Length: 10\r\n\r\naaaaaaaaaa";
+  std::ifstream *file;
 
   while (!quitProgram) {
     int connFd = 0;
+    bool found = false;
     DEBUG << "Calling connFd = accept(fd,NULL,NULL)." << ENDL;
 
     connFd = accept(listenFd, NULL,NULL);
@@ -207,12 +217,28 @@ int main (int argc, char *argv[]) {
     }
 
     while( recv(connFd, recv_buf, sizeof(recv_buf), 0) > 0 ) {
-      printf("%s", recv_buf);
+      // printf("%s", recv_buf);
+
+      char* line = strtok(recv_buf, "\r\n");
+      char* token = strtok(line, " ");
+      std::cout << token << "\n";
+      token = strtok(NULL, " ");
+      std::cout << token << "\n";
+
+      file = new std::ifstream("./data/file1.html");
+
+      // FILE *file = fopen("/data", "rb");
+
+      std::cout << std::endl;
       memset(recv_buf, '\0', strlen(recv_buf));
       break;
     }
 
+    if (found) {
 
+    } else {
+      send(connFd, fnf, sizeof(fnf), 0);
+    }
 
     DEBUG << "We have recieved a connection on " << connFd << ". Calling processConnection(" << connFd << ")" << ENDL;
     quitProgram = processConnection(connFd);
