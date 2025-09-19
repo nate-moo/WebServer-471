@@ -193,11 +193,13 @@ int main (int argc, char *argv[]) {
   // ********************************************************************
   int quitProgram = 0;
   char recv_buf[1024 * 1024] = {};
-  char* send_buf = (char*)malloc(1024*1024*1024);
+  char* send_buf = (char*)malloc(1024*1024);
   char path_buf[1024* 10] = {};
+  // std::string data;
   //
+  char* data = (char*)malloc(1024*1024);
 
-  char success[] = "HTTP/1.0 200 OK\r\nServer: SillyStupid/0.1\r\nContent-type: text/html; charset=utf-8\r\nContent-Length: ";
+  auto* success = new std::string("HTTP/1.0 200 OK\r\nServer: SillyStupid/0.1\r\nContent-type: text/html; charset=utf-8\r\nContent-Length: ");
   char fnf[] = "HTTP/1.0 404 File Not Found\r\nServer: SillyStupid/0.1\r\nContent-type: text/html; charset=utf-8\r\nContent-Length: 23\r\n\r\n<h1>File Not Found</h1>";
   // char server[] = "Server: SillyStupid/0.1\r\nContent-type: text/html; charset=utf-8\r\nContent-Length: ";
   // char msg[] = "HTTP/1.0 200 OK\r\nServer: SillyStupid/0.1\r\nContent-type: text/html; charset=utf-8\r\nContent-Length: 10\r\n\r\naaaaaaaaaa";
@@ -225,17 +227,29 @@ int main (int argc, char *argv[]) {
       token = strtok(NULL, " ");
       std::cout << token << "\n";
 
-      file = new std::ifstream("./data/file1.html");
+      char initpath[] = "./data";
+      char* path = (char*)malloc(1024);
+      strcat(path, initpath);
+      strcat(path, token);
+
+      std::cout << path << " " << strlen(path) << std::endl;
+
+      file = new std::ifstream(path);
+
+      file->read(data, 1024*1024);
 
       // FILE *file = fopen("/data", "rb");
-
-      std::cout << std::endl;
+      // std::cout << data << '\n';
+      // std::cout << std::endl;
       memset(recv_buf, '\0', strlen(recv_buf));
       break;
     }
 
-    if (found) {
-
+    if (!found) {
+      auto* response = new std::string(*success + std::to_string(strlen(data)) + "\r\n\r\n" + data);
+      // std::string response = success + "10\r\n\r\naaaaaaaaaa";
+      std::cout << response->size() << std::endl;
+      send(connFd, response->data(), response->size(), 0);
     } else {
       send(connFd, fnf, sizeof(fnf), 0);
     }
