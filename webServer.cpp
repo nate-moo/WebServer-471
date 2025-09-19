@@ -195,20 +195,15 @@ int main (int argc, char *argv[]) {
 
   while (!quitProgram) {
     char recv_buf[1024 * 1024] = {};
-    // char* send_buf = (char*)malloc(1024*1024);
-    // char path_buf[1024* 10] = {};
-    // std::string data;
-    //
 
     char* data = (char*)malloc(1024*1024);
+    memset(data, '\0', 1024*1024);
     std::byte* dataBytes;
     int length = 0;
 
     auto* successImage = new std::string("HTTP/1.0 200 OK\r\nServer: SillyStupid/0.1\r\nContent-type: image/jpeg\r\nContent-Length: ");
     auto* success = new std::string("HTTP/1.0 200 OK\r\nServer: SillyStupid/0.1\r\nContent-type: text/html; charset=utf-8\r\nContent-Length: ");
     char fnf[] = "HTTP/1.0 404 File Not Found\r\nServer: SillyStupid/0.1\r\nContent-type: text/html; charset=utf-8\r\nContent-Length: 23\r\n\r\n<h1>File Not Found</h1>";
-
-    std::ifstream *file;
 
     int connFd = 0;
     bool found = false;
@@ -235,15 +230,7 @@ int main (int argc, char *argv[]) {
 
       char initpath[] = "./data";
       char* path = (char*)malloc(1024);
-
-      if (std::regex_match(token, std::regex("(/file[0-9]\\.html|/image[0-9]\\.jpg)") )) {
-        found = true;
-      } else {
-        found = false;
-        break;
-
-      }
-
+      memset(path, '\0', 1024);
 
       strcat(path, initpath);
       strcat(path, token);
@@ -252,12 +239,27 @@ int main (int argc, char *argv[]) {
 
       if (!std::ifstream(path).good()) {
         send(connFd, fnf, sizeof(fnf), 0);
+        close(connFd);
         break;
       }
 
+      if (std::regex_match(token, std::regex("(/file[0-9]\\.html|/image[0-9]\\.jpg)") )) {
+        found = true;
+      } else {
+        send(connFd, fnf, sizeof(fnf), 0);
+        found = false;
+        close(connFd);
+        break;
+      }
+
+
+
+
+
+
       if (std::regex_match(token, std::regex("(/file[0-9]\\.html)") )) {
         length = 0;
-        file = new std::ifstream(path, std::ios_base::in);
+        std::ifstream *file = new std::ifstream(path, std::ios_base::in);
         file->read(data, 1024*1024);
         delete file;
       } else {
@@ -268,6 +270,7 @@ int main (int argc, char *argv[]) {
         length = ftell(fileptr);
         rewind(fileptr);
         dataBytes = (std::byte *)malloc(length * sizeof(char));
+        memset(dataBytes, '\0', length * sizeof(char));
         fread(dataBytes, 1, length, fileptr);
         fclose(fileptr);
         // delete fileptr;
@@ -278,7 +281,7 @@ int main (int argc, char *argv[]) {
     }
 
     if (found) {
-      std::string* response;
+      std::string* response = new std::string("");
 
       if (length == 0) {
         response = new std::string(*success + std::to_string(strlen(data)) + "\r\n\r\n" + data);
